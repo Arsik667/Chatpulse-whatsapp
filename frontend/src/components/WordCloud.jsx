@@ -1,4 +1,4 @@
-import { fmtInt } from "../format.js";
+import { useI18n } from "../i18n.js";
 import { Empty } from "./ui.jsx";
 
 // Простой хеш строки: слова перемешиваются, но всегда одинаково — облако не «прыгает».
@@ -11,7 +11,8 @@ function hash(word) {
 // Облако без библиотек: размер шрифта растёт с частотой слова. Корень сглаживает
 // разницу, иначе самое частое слово было бы огромным, а остальные — мелкими.
 export default function WordCloud({ words }) {
-  if (!words.length) return <Empty>Текстовых сообщений нет.</Empty>;
+  const { t, f } = useI18n();
+  if (!words.length) return <Empty>{t.noWords}</Empty>;
 
   const max = words[0].count;
   const min = words[words.length - 1].count;
@@ -25,7 +26,7 @@ export default function WordCloud({ words }) {
         return (
           <span
             key={word}
-            title={`${word}: ${fmtInt(count)}`}
+            title={`${word}: ${f.int(count)}`}
             className={w > 0.6 ? "hot" : ""}
             style={{ fontSize: `${0.8 + w * 1.8}rem`, opacity: 0.55 + w * 0.45 }}
           >

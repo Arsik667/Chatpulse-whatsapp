@@ -63,6 +63,12 @@ def test_unparseable_file(data, detail):
     assert detail in response.json()["detail"]
 
 
+def test_errors_follow_lang_param():
+    assert upload(b"", lang="en").json()["detail"] == "The file is empty."
+    assert upload(b"").json()["detail"] == "Файл пустой."  # по умолчанию — русский
+    assert upload(DEMO, lang="de").status_code == 422      # только ru и en
+
+
 def test_request_errors():
     assert client.post("/api/analyze", json={"file": "x"}).status_code == 415
     no_file = client.post("/api/analyze", data={"note": "без файла"}, files={"other": ("a.txt", b"")})
@@ -72,8 +78,9 @@ def test_request_errors():
 
 def test_too_large(monkeypatch):
     monkeypatch.setattr(main, "MAX_UPLOAD_BYTES", 1000)
-    response = upload(b"x" * 2000)
+    response = upload(b"x" * 2000, lang="en")
     assert response.status_code == 413
+    assert "MB" in response.json()["detail"]
 
 
 def test_upload_never_touches_disk(monkeypatch):

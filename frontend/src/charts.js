@@ -29,6 +29,11 @@ export function applyChartTheme() {
   Chart.defaults.font.family = css.getPropertyValue("--font").trim();
 }
 
+// Числа на осях и в подсказках: «0,5» по-русски и «0.5» по-английски.
+export function applyChartLocale(lang) {
+  Chart.defaults.locale = lang === "ru" ? "ru-RU" : "en-US";
+}
+
 export const baseOptions = {
   responsive: true,
   maintainAspectRatio: false,

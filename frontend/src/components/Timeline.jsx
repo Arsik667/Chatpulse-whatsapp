@@ -2,32 +2,34 @@ import { useState } from "react";
 import { Line } from "react-chartjs-2";
 
 import { ACCENT, baseOptions } from "../charts.js";
-import { fmtDate, fmtDateShort, fmtDateTime, fmtDuration, fmtInt, fmtMonth, mondayOf, weekdayOf } from "../format.js";
+import { mondayOf } from "../format.js";
+import { useI18n } from "../i18n.js";
 import { Empty, Section } from "./ui.jsx";
 
-const UNITS = { day: "дни", week: "недели", month: "месяцы" };
+const STEPS = ["day", "week", "month"];
 
 // Бэкенд отдаёт сообщения по дням (с нулями для пустых дней); недели и месяцы
 // собираем здесь — на длинных чатах дневной график превращается в шум.
-function aggregate(dates, counts, unit) {
-  if (unit === "day") return { labels: dates.map(fmtDateShort), values: counts };
+function aggregate(dates, counts, step, f, t) {
+  if (step === "day") return { labels: dates.map(f.dateShort), values: counts };
   const buckets = new Map();
   dates.forEach((date, i) => {
-    const key = unit === "month" ? date.slice(0, 7) : mondayOf(date);
+    const key = step === "month" ? date.slice(0, 7) : mondayOf(date);
     buckets.set(key, (buckets.get(key) ?? 0) + counts[i]);
   });
   const keys = [...buckets.keys()];
   return {
-    labels: keys.map((k) => (unit === "month" ? fmtMonth(k) : `с ${fmtDateShort(k)}`)),
+    labels: keys.map((k) => (step === "month" ? f.month(k) : t.weekFrom(f.dateShort(k)))),
     values: keys.map((k) => buckets.get(k)),
   };
 }
 
-const defaultUnit = (days) => (days <= 120 ? "day" : days <= 730 ? "week" : "month");
+const defaultStep = (days) => (days <= 120 ? "day" : days <= 730 ? "week" : "month");
 
 export default function Timeline({ timeline }) {
-  const [unit, setUnit] = useState(() => defaultUnit(timeline.dates.length));
-  const { labels, values } = aggregate(timeline.dates, timeline.counts, unit);
+  const { t, f } = useI18n();
+  const [step, setStep] = useState(() => defaultStep(timeline.dates.length));
+  const { labels, values } = aggregate(timeline.dates, timeline.counts, step, f, t);
   const peak = timeline.most_active_day;
 
   const data = {
@@ -53,22 +55,22 @@ export default function Timeline({ timeline }) {
     },
     plugins: {
       legend: { display: false },
-      tooltip: { callbacks: { label: (ctx) => ` ${fmtInt(ctx.raw)} сообщ.` } },
+      tooltip: { callbacks: { label: (ctx) => ` ${t.msgs(f.int(ctx.raw))}` } },
     },
   };
 
   return (
-    <Section title="Таймлайн" subtitle="Сообщения по времени" className="timeline">
-      <div className="segmented" role="group" aria-label="Шаг графика">
-        {Object.entries(UNITS).map(([key, label]) => (
+    <Section title={t.timelineTitle} subtitle={t.timelineSub} className="timeline">
+      <div className="segmented" role="group" aria-label={t.stepAria}>
+        {STEPS.map((key) => (
           <button
             key={key}
             type="button"
-            className={unit === key ? "active" : ""}
-            aria-pressed={unit === key}
-            onClick={() => setUnit(key)}
+            className={step === key ? "active" : ""}
+            aria-pressed={step === key}
+            onClick={() => setStep(key)}
           >
-            {label}
+            {t.steps[key]}
           </button>
         ))}
       </div>
@@ -77,33 +79,33 @@ export default function Timeline({ timeline }) {
           <Line data={data} options={options} />
         </div>
       ) : (
-        <Empty>Вся переписка уместилась в один день — {fmtDate(peak.date)}.</Empty>
+        <Empty>{t.oneDay(f.date(peak.date))}</Empty>
       )}
 
       <div className="grid-2 facts">
         <div>
-          <h3>Самый активный день</h3>
+          <h3>{t.peakDay}</h3>
           <p className="big">
-            {fmtDate(peak.date)} <span className="muted">({weekdayOf(peak.date)})</span>
+            {f.date(peak.date)} <span className="muted">({f.weekdayOf(peak.date)})</span>
           </p>
-          <p className="muted">{fmtInt(peak.count)} сообщ.</p>
+          <p className="muted">{t.msgs(f.int(peak.count))}</p>
         </div>
         <div>
-          <h3>Самые долгие тишины</h3>
+          <h3>{t.silencesTitle}</h3>
           {timeline.longest_silences.length ? (
             <ol className="silences">
               {timeline.longest_silences.map((s) => (
                 <li key={s.start}>
-                  <strong>{fmtDuration(s.duration_s)}</strong>
+                  <strong>{f.duration(s.duration_s)}</strong>
                   <span className="muted">
                     {" "}
-                    {fmtDateTime(s.start)} → {fmtDateTime(s.end)}, первым написал(а) {s.broken_by}
+                    {f.dateTime(s.start)} → {f.dateTime(s.end)}, {t.brokenBy(s.broken_by)}
                   </span>
                 </li>
               ))}
             </ol>
           ) : (
-            <p className="muted">Пауз между сообщениями нет.</p>
+            <p className="muted">{t.noPauses}</p>
           )}
         </div>
       </div>

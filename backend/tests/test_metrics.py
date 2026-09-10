@@ -161,7 +161,7 @@ def test_only_system_messages():
     assert report["timeline"]["most_active_day"] is None
     assert report["top_words"] == report["top_emoji"] == []
     assert report["calls"]["total"] == 0
-    assert "нет сообщений" in report["warnings"][0]
+    assert report["warnings"] == ["no_messages"]
 
 
 def test_single_participant_android_without_calls():
@@ -174,5 +174,4 @@ def test_single_participant_android_without_calls():
         "total_duration_s": 0.0, "avg_duration_s": None, "longest_s": None, "by_participant": [],
     }
     assert report["meta"]["has_seconds"] is False
-    assert any("один участник" in w for w in report["warnings"])
-    assert any("без секунд" in w for w in report["warnings"])
+    assert report["warnings"] == ["single_participant", "no_seconds"]

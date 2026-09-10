@@ -26,6 +26,8 @@ from datetime import datetime
 
 import pandas as pd
 
+from .messages import DEFAULT_LANG, message
+
 # Типы сообщений (колонка `kind`):
 #   text    — обычный текст
 #   media   — фото / видео / стикер / документ (сам файл в .txt не попадает)
@@ -49,7 +51,19 @@ LRM = "\u200e"
 
 
 class ChatParseError(ValueError):
-    """Файл не удалось разобрать. Текст ошибки можно показывать пользователю."""
+    """Файл не удалось разобрать.
+
+    code — ключ из messages.MESSAGES, по нему текст переводится: exc.text("en").
+    str(exc) — тот же текст по-русски.
+    """
+
+    def __init__(self, code: str, **params):
+        self.code = code
+        self.params = params
+        super().__init__(message(code, DEFAULT_LANG, **params))
+
+    def text(self, lang: str = DEFAULT_LANG) -> str:
+        return message(self.code, lang, **self.params)
 
 
 @dataclass
@@ -136,7 +150,7 @@ def read_export(data: bytes, filename: str = "") -> str:
     """Байты загруженного файла → текст чата. Понимает .txt и .zip."""
     is_zip = data[:4] == b"PK\x03\x04"
     if filename.lower().endswith(".zip") and not is_zip:
-        raise ChatParseError("Файл называется .zip, но это не zip-архив.")
+        raise ChatParseError("not_a_zip")
     if is_zip:
         data = _chat_from_zip(data)
 
@@ -157,17 +171,17 @@ def _chat_from_zip(data: bytes) -> bytes:
                 and not info.filename.startswith("__MACOSX/")
             ]
             if not txts:
-                raise ChatParseError("В архиве нет .txt-файла с перепиской. Это точно экспорт WhatsApp?")
+                raise ChatParseError("zip_without_chat")
 
             # Обычно .txt в архиве один. Но если в чат пересылали .txt-документы,
             # берём тот, чьи первые строки больше всего похожи на переписку.
             chat = txts[0] if len(txts) == 1 else max(txts, key=lambda info: _header_score(zf, info))
             if chat.file_size > MAX_CHAT_BYTES:
-                raise ChatParseError("Файл переписки в архиве слишком большой.")
+                raise ChatParseError("chat_too_large")
             return zf.read(chat)
     except (zipfile.BadZipFile, RuntimeError, NotImplementedError) as exc:
         # RuntimeError — архив с паролем, NotImplementedError — редкое сжатие.
-        raise ChatParseError(f"Не удалось распаковать .zip: {exc}") from exc
+        raise ChatParseError("zip_unreadable", reason=str(exc)) from exc
 
 
 def _header_score(zf: zipfile.ZipFile, info: zipfile.ZipInfo) -> int:
@@ -201,10 +215,7 @@ def detect_platform(lines: list[str]) -> str:
 
     best = max(scores, key=scores.get)
     if scores[best] == 0:
-        raise ChatParseError(
-            "Не удалось распознать формат: строки не похожи на экспорт WhatsApp "
-            "(ожидается «31.12.20, 23:59 - Имя: текст» или «[31.12.20, 23:59:59] Имя: текст»)."
-        )
+        raise ChatParseError("unknown_format")
     return best
 
 
@@ -275,7 +286,7 @@ def parse_chat(text: str) -> ParsedChat:
     """Текст экспорта → ParsedChat с DataFrame сообщений."""
     lines = text.splitlines()
     if not any(line.strip() for line in lines):
-        raise ChatParseError("Файл пустой.")
+        raise ChatParseError("empty_file")
 
     platform = detect_platform(lines)
     header_re = HEADER_RE[platform]
@@ -308,7 +319,7 @@ def parse_chat(text: str) -> ParsedChat:
         rows.append((ts, author or None, body, kind, *call))
 
     if not rows:
-        raise ChatParseError("Не найдено ни одного сообщения с корректной датой.")
+        raise ChatParseError("no_valid_dates")
 
     df = pd.DataFrame(rows, columns=COLUMNS)
     df["timestamp"] = pd.to_datetime(df["timestamp"])

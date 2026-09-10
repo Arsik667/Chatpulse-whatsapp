@@ -630,3 +630,14 @@ tbody tr:last-child td {
     width: fit-content;
   }
 }
+
+/* переключатель языка в шапке */
+.topbar-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.ghost.lang {
+  padding: 9px 12px;
+  min-width: 48px;
+}

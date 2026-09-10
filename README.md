@@ -10,8 +10,8 @@ is sent — it never touches the server's disk, and it never leaves your machine
 
 ![ChatPulse dashboard](docs/dashboard.png)
 
-<sub>The screenshot uses [`examples/demo_chat.txt`](examples/demo_chat.txt) — a synthetic
-chat with made-up people and messages. The UI is in Russian.</sub>
+<sub>The screenshot uses [`examples/demo_chat_en.txt`](examples/demo_chat_en.txt) — a synthetic
+chat with made-up people and messages. The interface is available in English and Russian.</sub>
 
 ## Features
 
@@ -28,6 +28,7 @@ chat with made-up people and messages. The UI is in Russian.</sub>
 | **Top words** | word cloud without Russian/English stop words and participants' names |
 | **Top emoji** | skin tones, flags and ZWJ sequences (👨‍👩‍👧) are counted as one emoji |
 | **CLI** | the same analysis from the terminal, with a PDF report — no Docker, no frontend |
+| **Languages** | English and Russian: the EN/RU button in the header or `?lang=en` in the URL; `--lang en` for the CLI and PDF |
 
 Messy exports get clear empty states instead of errors — both in the web UI and in the CLI:
 no calls, a single participant, only system messages, an empty or non-WhatsApp file.
@@ -38,9 +39,9 @@ no calls, a single participant, only system messages, an empty or non-WhatsApp f
 docker compose up --build
 ```
 
-Open http://localhost:5173 and drop your export — or open http://localhost:5173/?demo
-to see the dashboard on the synthetic demo chat. The API docs are at
-http://localhost:8000/api/docs.
+Open http://localhost:5173 and drop your export — or open
+http://localhost:5173/?demo&lang=en to see the dashboard on the synthetic demo chat in
+English. The API docs are at http://localhost:8000/api/docs.
 
 ## Running without Docker
 
@@ -74,7 +75,7 @@ from the same JSON report the frontend receives.
 cd backend
 python report_cli.py chat.txt --out report.pdf
 python report_cli.py "WhatsApp Chat.zip" --json report.json --no-pdf
-python report_cli.py ../examples/demo_chat.txt --gap-hours 3
+python report_cli.py ../examples/demo_chat_en.txt --lang en --gap-hours 3
 ```
 
 | Flag | Meaning |
@@ -84,11 +85,12 @@ python report_cli.py ../examples/demo_chat.txt --gap-hours 3
 | `--no-pdf` | only print the summary in the terminal |
 | `--gap-hours H` | pause after which a new conversation starts (default 6) |
 | `--top-words N` | how many words to keep in the top (default 50) |
+| `--lang ru\|en` | language of the terminal summary and the PDF (default `ru`) |
 
 The PDF has four pages: an overview with the timeline, participants and response times,
 activity heatmap, top words and emoji.
 
-<img src="docs/pdf-report.png" alt="First page of the PDF report" width="420">
+<img src="docs/pdf-report.png" alt="All four pages of the PDF report" width="760">
 
 ## How to export a chat from WhatsApp
 
@@ -138,38 +140,41 @@ minute — the report says so in a warning.
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/api/analyze?gap_hours=6` | `multipart/form-data` with the file in the `file` field → JSON report |
+| `POST` | `/api/analyze?gap_hours=6&lang=en` | `multipart/form-data` with the file in the `file` field → JSON report |
 | `GET` | `/api/health` | health check (used by docker-compose) |
 
 ```bash
-curl -F "file=@examples/demo_chat.txt" http://localhost:8000/api/analyze
+curl -F "file=@examples/demo_chat_en.txt" "http://localhost:8000/api/analyze?lang=en"
 ```
 
-Errors come back as `{"detail": "..."}` with a message that can be shown to the user:
-`422` — the file is empty or is not a WhatsApp export, `413` — too large,
-`415` — not a multipart request, `400` — no `file` field.
+Errors come back as `{"detail": "..."}` with a message that can be shown to the user, in the
+language from `lang` (`ru` by default): `422` — the file is empty or is not a WhatsApp export,
+`413` — too large, `415` — not a multipart request, `400` — no `file` field.
 
-The report for the demo chat, shortened:
+The report itself doesn't depend on `lang`: warnings are codes (`no_messages`,
+`single_participant`, `no_seconds`), and each client shows them in its own language.
+
+The report for the English demo chat, shortened:
 
 ```jsonc
 {
-  "meta": {"platform": "ios", "date_order": "DMY", "participants": ["Алиса", "Максим"],
+  "meta": {"platform": "ios", "date_order": "MDY", "participants": ["Alice", "Max"],
            "first_message": "2025-09-01T18:11:50", "days": 67, "has_seconds": true, "gap_hours": 6.0},
-  "summary": {"messages": 2989, "words": 7154, "media": 134, "links": 77, "deleted": 28,
-              "avg_words_per_message": 2.53},
-  "participants": [{"name": "Алиса", "messages": 1518, "share": 50.8, "words": 3696,
+  "summary": {"messages": 2989, "words": 7856, "media": 134, "links": 77, "deleted": 28,
+              "avg_words_per_message": 2.78},
+  "participants": [{"name": "Alice", "messages": 1518, "share": 50.8, "words": 4037,
                     "initiations": 52, "initiation_share": 60.5 /* … */} /* , … */],
-  "response_times": [{"name": "Максим", "median_s": 156.0, "mean_s": 342.1, "responses": 794} /* , … */],
+  "response_times": [{"name": "Max", "median_s": 156.0, "mean_s": 342.1, "responses": 794} /* , … */],
   "calls": {"total": 11, "completed": 9, "missed": 2, "total_duration_s": 22680.0,
             "by_participant": [/* total, completed, missed, duration per caller */]},
   "activity": {"matrix": [/* 7 rows (Monday first) × 24 hours */], "by_hour": [/* 24 */], "by_weekday": [/* 7 */]},
   "timeline": {"dates": ["2025-09-01" /* , … every day, including empty ones */], "counts": [/* … */],
                "most_active_day": {"date": "2025-10-26", "count": 138},
                "longest_silences": [{"start": "2025-10-10T11:03:03", "end": "2025-10-12T10:04:36",
-                                     "duration_s": 169293.0, "broken_by": "Алиса"} /* , … top 3 */]},
-  "top_words": [{"word": "привет", "count": 546} /* , … top 50 */],
+                                     "duration_s": 169293.0, "broken_by": "Alice"} /* , … top 3 */]},
+  "top_words": [{"word": "hey", "count": 546} /* , … top 50 */],
   "top_emoji": [{"emoji": "😂", "count": 611} /* , … top 20 */],
-  "warnings": []
+  "warnings": [/* codes, e.g. "no_seconds" */]
 }
 ```
 
@@ -181,6 +186,7 @@ chatpulse/
 │   ├── analyzer_core/          # reusable package: all the logic, no web
 │   │   ├── parser.py           # format detection + parsing into a pandas DataFrame
 │   │   ├── metrics.py          # every aggregation + analyze() → the JSON report
+│   │   ├── messages.py         # error and warning texts in Russian and English
 │   │   └── stopwords/          # ru.txt, en.txt
 │   ├── app/main.py             # FastAPI: POST /api/analyze, GET /api/health
 │   ├── report_cli.py           # terminal entry point, PDF via matplotlib
@@ -190,11 +196,12 @@ chatpulse/
 ├── frontend/
 │   ├── src/
 │   │   ├── App.jsx
+│   │   ├── i18n.js             # UI texts in Russian and English
 │   │   ├── api.js · charts.js · format.js · styles.css
 │   │   └── components/         # UploadZone, Dashboard, Heatmap, Timeline, WordCloud
 │   ├── Dockerfile · nginx.conf
 │   └── vite.config.js
-├── examples/demo_chat.txt      # synthetic chat, no real people
+├── examples/                   # synthetic demo chats (ru, en), no real people
 ├── docs/                       # images for this README
 └── docker-compose.yml
 ```
@@ -206,7 +213,7 @@ so the numbers in the dashboard and in the PDF always match.
 
 ```bash
 cd backend
-pytest            # 52 tests: parser formats, hand-computed metrics, empty states, CLI, API
+pytest            # 72 tests: parser formats, hand-computed metrics, empty states, CLI, API, translations
 ```
 
 A synthetic chat with 50,000 messages (`python scripts/make_demo_chat.py --messages 50000`)

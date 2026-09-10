@@ -7,7 +7,9 @@ import pytest
 
 import report_cli
 
-DEMO = Path(__file__).resolve().parents[2] / "examples" / "demo_chat.txt"
+EXAMPLES = Path(__file__).resolve().parents[2] / "examples"
+DEMO = EXAMPLES / "demo_chat.txt"
+DEMO_EN = EXAMPLES / "demo_chat_en.txt"
 
 
 def test_pdf_and_json(tmp_path, capsys):
@@ -19,6 +21,22 @@ def test_pdf_and_json(tmp_path, capsys):
     report = json.loads(report_json.read_text("utf-8"))
     assert report["summary"]["messages"] > 0
     assert "ChatPulse" in capsys.readouterr().out
+
+
+def test_english_report(tmp_path, capsys):
+    pdf = tmp_path / "report.pdf"
+    assert report_cli.main([str(DEMO_EN), "--lang", "en", "--out", str(pdf)]) == 0
+    assert pdf.read_bytes()[:5] == b"%PDF-"
+    out = capsys.readouterr().out
+    assert "Most active day" in out and "Alice" in out
+    assert not any("а" <= ch <= "я" for ch in out.lower())  # ни одной русской буквы
+
+
+def test_english_errors(tmp_path, capsys):
+    path = tmp_path / "empty.txt"
+    path.write_bytes(b"")
+    assert report_cli.main([str(path), "--no-pdf", "--lang", "en"]) == 1
+    assert "The file is empty." in capsys.readouterr().err
 
 
 @pytest.mark.parametrize(
@@ -53,6 +71,13 @@ def test_missing_file(tmp_path, capsys):
 )
 def test_fmt_duration(seconds, expected):
     assert report_cli.fmt_duration(seconds) == expected
+
+
+def test_english_formatting():
+    assert report_cli.fmt_duration(3900, "en") == "1 h 5 min"
+    assert report_cli.fmt_date("2025-10-26", lang="en") == "26 Oct 2025"
+    assert report_cli.fmt_int(12345, "en") == "12,345"
+    assert (report_cli.fmt_int(12345), report_cli.fmt_pct(50.8)) == ("12 345", "50,8%")
 
 
 def test_emoji_names_for_pdf():

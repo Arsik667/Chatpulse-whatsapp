@@ -1,24 +1,32 @@
 import { useEffect, useRef, useState } from "react";
 
-// Синтетический чат из examples/ — Vite кладёт его в сборку отдельным файлом.
-import demoChatUrl from "../../../examples/demo_chat.txt?url";
+// Синтетические чаты из examples/ — Vite кладёт их в сборку отдельными файлами.
+import demoEnUrl from "../../../examples/demo_chat_en.txt?url";
+import demoRuUrl from "../../../examples/demo_chat.txt?url";
+import { useI18n } from "../i18n.js";
 
 const EXTENSIONS = [".txt", ".zip"];
+const DEMO = {
+  ru: { url: demoRuUrl, name: "demo_chat.txt" },
+  en: { url: demoEnUrl, name: "demo_chat_en.txt" },
+};
 
 export default function UploadZone({ onFile, loading, error, maxMb, backendDown }) {
+  const { lang, t } = useI18n();
   const input = useRef(null);
   const [dragging, setDragging] = useState(false);
+  // храним ключ ошибки, а не текст — чтобы при смене языка она тоже переводилась
   const [localError, setLocalError] = useState("");
 
   // Проверяем то, что можно проверить без сервера: расширение и размер.
   function pick(file) {
     if (!file || loading) return;
     if (!EXTENSIONS.some((ext) => file.name.toLowerCase().endsWith(ext))) {
-      setLocalError("Нужен экспорт WhatsApp: файл .txt или .zip.");
+      setLocalError("errExtension");
       return;
     }
     if (file.size > maxMb * 1024 * 1024) {
-      setLocalError(`Файл больше ${maxMb} МБ. Экспортируйте чат без медиа — это один .txt.`);
+      setLocalError("errTooLarge");
       return;
     }
     setLocalError("");
@@ -27,11 +35,12 @@ export default function UploadZone({ onFile, loading, error, maxMb, backendDown 
 
   // Демо проходит тот же путь, что и настоящий файл: File → POST /api/analyze.
   async function pickDemo() {
+    const demo = DEMO[lang];
     try {
-      const blob = await (await fetch(demoChatUrl)).blob();
-      pick(new File([blob], "demo_chat.txt", { type: "text/plain" }));
+      const blob = await (await fetch(demo.url)).blob();
+      pick(new File([blob], demo.name, { type: "text/plain" }));
     } catch {
-      setLocalError("Не удалось загрузить демо-чат.");
+      setLocalError("errDemo");
     }
   }
 
@@ -39,9 +48,12 @@ export default function UploadZone({ onFile, loading, error, maxMb, backendDown 
   // иначе «Загрузить другой чат» снова открывал бы демо.
   const demoStarted = useRef(false);
   useEffect(() => {
-    if (demoStarted.current || !new URLSearchParams(window.location.search).has("demo")) return;
+    const params = new URLSearchParams(window.location.search);
+    if (demoStarted.current || !params.has("demo")) return;
     demoStarted.current = true; // StrictMode в dev вызывает эффект дважды
-    window.history.replaceState(null, "", window.location.pathname);
+    params.delete("demo");
+    const query = params.toString();
+    window.history.replaceState(null, "", window.location.pathname + (query ? `?${query}` : ""));
     pickDemo();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -59,15 +71,12 @@ export default function UploadZone({ onFile, loading, error, maxMb, backendDown 
     pick(e.dataTransfer.files[0]);
   };
 
-  const message = localError || error;
+  const message = (localError && (localError === "errTooLarge" ? t.errTooLarge(maxMb) : t[localError])) || error;
 
   return (
     <section className="upload">
-      <h1>Что происходит в вашем чате?</h1>
-      <p className="lead">
-        Загрузите экспорт WhatsApp — ChatPulse посчитает, кто пишет больше, кто первым начинает разговор, как быстро
-        вы отвечаете и в какие часы чат оживает.
-      </p>
+      <h1>{t.heroTitle}</h1>
+      <p className="lead">{t.heroLead}</p>
 
       <div
         className={`dropzone${dragging ? " dragging" : ""}${loading ? " busy" : ""}`}
@@ -78,18 +87,18 @@ export default function UploadZone({ onFile, loading, error, maxMb, backendDown 
         {loading ? (
           <>
             <div className="spinner" aria-hidden="true" />
-            <p>Считаем статистику…</p>
+            <p>{t.analyzing}</p>
           </>
         ) : (
           <>
             <div className="dropzone-icon" aria-hidden="true">📂</div>
             <p>
-              <strong>Перетащите файл сюда</strong> или
+              <strong>{t.dropHere}</strong> {t.or}
             </p>
             <button type="button" className="primary" onClick={() => input.current.click()}>
-              Выбрать файл
+              {t.chooseFile}
             </button>
-            <p className="hint">.txt или .zip (экспорт с медиа) · до {maxMb} МБ</p>
+            <p className="hint">{t.fileHint(maxMb)}</p>
           </>
         )}
         <input
@@ -105,11 +114,11 @@ export default function UploadZone({ onFile, loading, error, maxMb, backendDown 
       </div>
 
       <p className="demo">
-        Нет под рукой экспорта?{" "}
+        {t.demoPrefix}{" "}
         <button type="button" className="link" onClick={pickDemo} disabled={loading}>
-          Попробуйте на демо-чате
+          {t.demoLink}
         </button>{" "}
-        — переписка выдуманная.
+        {t.demoSuffix}
       </p>
 
       {message && (
@@ -119,21 +128,20 @@ export default function UploadZone({ onFile, loading, error, maxMb, backendDown 
       )}
       {backendDown && !message && (
         <p className="error" role="alert">
-          Бэкенд не отвечает. Запустите его — команды есть в README.
+          {t.backendDown}
         </p>
       )}
 
       <details className="howto">
-        <summary>Как экспортировать чат из WhatsApp</summary>
+        <summary>{t.howtoTitle}</summary>
         <ul>
           <li>
-            <strong>Android:</strong> откройте чат → ⋮ → Ещё → Экспорт чата → Без медиафайлов.
+            <strong>Android:</strong> {t.howtoAndroid}
           </li>
           <li>
-            <strong>iPhone:</strong> откройте чат → нажмите на имя контакта или группы → Экспорт чата → Без
-            медиафайлов.
+            <strong>iPhone:</strong> {t.howtoIphone}
           </li>
-          <li>Сохраните файл на компьютер и перетащите сюда — .zip распаковывать не нужно.</li>
+          <li>{t.howtoSave}</li>
         </ul>
       </details>
     </section>

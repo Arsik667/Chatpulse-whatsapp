@@ -340,12 +340,13 @@ def analyze(
 
 
 def _warnings(report: dict) -> list[str]:
-    """Пояснения к «грязным» экспортам — их показывают и веб, и CLI."""
+    """Пояснения к «грязным» экспортам — кодами. Тексты на двух языках лежат
+    в messages.py (для API и CLI) и в словаре фронтенда."""
     warnings = []
     if report["summary"]["messages"] == 0:
-        warnings.append("В чате нет сообщений от участников — только служебные уведомления.")
+        warnings.append("no_messages")
     elif len(report["participants"]) == 1:
-        warnings.append("В чате один участник: время ответа и инициатива разговоров не считаются.")
+        warnings.append("single_participant")
     if report["summary"]["messages"] and not report["meta"]["has_seconds"]:
-        warnings.append("В экспорте время без секунд (так пишет Android) — время ответа точно до минуты.")
+        warnings.append("no_seconds")
     return warnings

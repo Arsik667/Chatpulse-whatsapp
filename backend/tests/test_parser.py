@@ -181,8 +181,10 @@ def test_encodings(encoding):
 
 @pytest.mark.parametrize("text", ["", "\n\n  \n"])
 def test_empty_file(text):
-    with pytest.raises(ChatParseError, match="пустой"):
+    with pytest.raises(ChatParseError, match="пустой") as exc_info:
         parse_chat(text)
+    assert exc_info.value.code == "empty_file"
+    assert exc_info.value.text("en") == "The file is empty."
 
 
 def test_not_a_whatsapp_export():
