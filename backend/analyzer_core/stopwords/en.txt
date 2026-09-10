@@ -1,0 +1,31 @@
+# English stop words for the top-words list. Words are separated by spaces and
+# lower-cased on load. Words shorter than 3 letters are dropped anyway.
+
+# pronouns
+you your yours yourself yourselves him his himself her hers herself its itself
+they them their theirs themselves our ours ourselves myself
+this that these those what which who whom whose
+
+# contractions (with and without the apostrophe — people skip it in chats)
+i'm you're he's she's it's we're they're i've you've we've they've
+i'd you'd he'd she'd we'd they'd i'll you'll he'll she'll we'll they'll
+isn't aren't wasn't weren't haven't hasn't hadn't won't wouldn't
+don't doesn't didn't can't couldn't shouldn't mustn't let's that's what's
+there's here's who's where's how's
+youre dont doesnt didnt cant couldnt wont wouldnt isnt arent wasnt
+thats whats theres ive youve id youd ill
+
+# auxiliary and modal verbs
+are was were been being have has had having does did doing
+will would shall should can could may might must
+get got gets getting going gonna wanna gotta
+
+# articles, prepositions, conjunctions
+the and but because until while about against between into through during
+before after above below from down out off over under again further then once
+for with than too very also just only own same such both each few more most
+other some any all nor not
+
+# adverbs, question words, fillers
+here there when where why how now still even really well yes yeah yep nope
+okay like

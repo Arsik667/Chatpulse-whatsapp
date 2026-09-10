@@ -4,6 +4,22 @@
 поэтому здесь только чистые функции: байты файла на входе, данные на выходе.
 """
 
+from .metrics import DEFAULT_GAP_HOURS, analyze
 from .parser import ChatParseError, ParsedChat, load_chat, parse_chat, read_export
 
-__all__ = ["ChatParseError", "ParsedChat", "load_chat", "parse_chat", "read_export"]
+
+def analyze_file(data: bytes, filename: str = "", **options) -> dict:
+    """Байты .txt/.zip → готовый отчёт. Единая точка входа для API и CLI."""
+    return analyze(load_chat(data, filename), **options)
+
+
+__all__ = [
+    "DEFAULT_GAP_HOURS",
+    "ChatParseError",
+    "ParsedChat",
+    "analyze",
+    "analyze_file",
+    "load_chat",
+    "parse_chat",
+    "read_export",
+]
