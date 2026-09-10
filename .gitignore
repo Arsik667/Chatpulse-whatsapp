@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# Node
+node_modules/
+dist/
+
+# Отчёты и экспорты чатов — личные данные, в репозиторий не кладём
+*.pdf
+*.zip
+chats/
+
+# IDE / OS
+.DS_Store
+.idea/
+.vscode/
