@@ -1,0 +1,6 @@
+# Контекст сборки фронтенда — весь репозиторий; берём из него только frontend/ и examples/.
+.git
+backend
+docs
+**/node_modules
+**/dist

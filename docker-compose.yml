@@ -1,0 +1,29 @@
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "127.0.0.1:8000:8000" # только localhost — в локальную сеть не торчит
+    environment:
+      CHATPULSE_MAX_UPLOAD_MB: "200"
+      CHATPULSE_CORS_ORIGINS: "http://localhost:5173,http://127.0.0.1:5173"
+    # Файловая система контейнера только для чтения: записать загруженный
+    # чат на диск бэкенду физически некуда.
+    read_only: true
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_API_URL: http://localhost:8000
+    ports:
+      - "127.0.0.1:5173:5173"
+    depends_on:
+      backend:
+        condition: service_healthy
