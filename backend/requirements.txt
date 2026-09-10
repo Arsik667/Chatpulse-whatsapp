@@ -1,1 +1,2 @@
 pandas>=3.0
+matplotlib>=3.9
