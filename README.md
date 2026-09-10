@@ -212,6 +212,18 @@ pytest            # 52 tests: parser formats, hand-computed metrics, empty state
 A synthetic chat with 50,000 messages (`python scripts/make_demo_chat.py --messages 50000`)
 is parsed and fully analyzed in about **0.5 s** on a laptop — the target was 2–3 s.
 
+## Limitations and ideas
+
+- **Languages.** Dates in any numeric format are parsed, but media, calls and system events
+  are recognized in English and Russian exports only; in other languages some of them will
+  be counted as ordinary text. Stop words exist for Russian and English.
+- **No lemmatization.** «котик» and «котика» are counted as different words. Adding
+  [pymorphy3](https://pypi.org/project/pymorphy3/) for Russian would merge word forms.
+- **Time precision.** Android exports have no seconds, so replies within the same minute
+  show up as 0 s.
+- **Ideas:** sentiment of messages over time, comparing two periods of the same chat,
+  top words per participant.
+
 ## Stack
 
 Python · pandas · FastAPI · matplotlib · React 18 · Vite · Chart.js · Docker Compose
